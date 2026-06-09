@@ -1,14 +1,352 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/ombor-x/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ombor-x</title>
-    <script type="module" crossorigin src="/ombor-x/assets/index-vhB9Jv1l.js"></script>
-    <link rel="stylesheet" crossorigin href="/ombor-x/assets/index-CHwwL39s.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ombor X - Ombor Boshqaruv Tizimi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <style>
+    [v-cloak] { display: none; }
+    .sidebar-item:hover { background: rgba(255,255,255,0.1); }
+    .sidebar-item.active { background: rgba(255,255,255,0.2); }
+  </style>
+</head>
+<body class="bg-gray-100 font-sans" v-cloak>
+<div id="app">
+  <div class="flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    <div class="w-64 bg-indigo-800 text-white flex flex-col shrink-0">
+      <div class="p-5 border-b border-indigo-700">
+        <h1 class="text-2xl font-bold">🏭 Ombor X</h1>
+        <p class="text-indigo-300 text-sm mt-1">Ombor boshqaruv tizimi</p>
+      </div>
+      <nav class="flex-1 p-4 space-y-1">
+        <button v-for="item in menu" :key="item.id"
+          @click="page = item.id"
+          :class="['sidebar-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition', page===item.id ? 'active font-semibold' : '']">
+          <span class="text-xl">{{item.icon}}</span> {{item.label}}
+        </button>
+      </nav>
+      <div class="p-4 border-t border-indigo-700 text-indigo-300 text-sm">
+        Jami mahsulot: <strong class="text-white">{{products.length}}</strong><br>
+        Kam qoldiq: <strong class="text-red-300">{{lowStock.length}}</strong>
+      </div>
+    </div>
+
+    <!-- Main -->
+    <div class="flex-1 overflow-auto">
+
+      <!-- Dashboard -->
+      <div v-if="page==='dashboard'" class="p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">📊 Dashboard</h2>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div class="bg-white rounded-2xl p-5 shadow-sm border-l-4 border-indigo-500">
+            <div class="text-3xl font-bold text-indigo-600">{{products.length}}</div>
+            <div class="text-gray-500 mt-1">Mahsulotlar</div>
+          </div>
+          <div class="bg-white rounded-2xl p-5 shadow-sm border-l-4 border-green-500">
+            <div class="text-3xl font-bold text-green-600">{{incomes.length}}</div>
+            <div class="text-gray-500 mt-1">Kirimlar</div>
+          </div>
+          <div class="bg-white rounded-2xl p-5 shadow-sm border-l-4 border-red-500">
+            <div class="text-3xl font-bold text-red-600">{{outcomes.length}}</div>
+            <div class="text-gray-500 mt-1">Chiqimlar</div>
+          </div>
+          <div class="bg-white rounded-2xl p-5 shadow-sm border-l-4 border-yellow-500">
+            <div class="text-3xl font-bold text-yellow-600">{{lowStock.length}}</div>
+            <div class="text-gray-500 mt-1">Kam qoldiq</div>
+          </div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm">
+          <h3 class="font-bold text-gray-700 mb-4">⚠️ Kam qoldiq mahsulotlar</h3>
+          <div v-if="lowStock.length===0" class="text-gray-400 text-center py-4">Barcha mahsulotlar yetarli 👍</div>
+          <div v-for="p in lowStock" :key="p.id" class="flex items-center justify-between py-2 border-b last:border-0">
+            <span class="font-medium">{{p.name}}</span>
+            <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm">{{p.qty}} dona</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mahsulotlar -->
+      <div v-if="page==='products'" class="p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-gray-800">📦 Mahsulotlar</h2>
+          <button @click="showAddProduct=true" class="bg-indigo-600 text-white px-5 py-2 rounded-xl hover:bg-indigo-700 transition">+ Qo'shish</button>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <table class="w-full">
+            <thead class="bg-gray-50 text-gray-600 text-sm">
+              <tr>
+                <th class="text-left px-5 py-3">Nomi</th>
+                <th class="text-left px-5 py-3">Kategoriya</th>
+                <th class="text-left px-5 py-3">Miqdor</th>
+                <th class="text-left px-5 py-3">Narxi</th>
+                <th class="text-left px-5 py-3">Amal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in products" :key="p.id" class="border-t hover:bg-gray-50">
+                <td class="px-5 py-3 font-medium">{{p.name}}</td>
+                <td class="px-5 py-3 text-gray-500">{{p.category}}</td>
+                <td class="px-5 py-3">
+                  <span :class="p.qty<=p.minQty ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'" class="px-2 py-1 rounded-full text-sm">{{p.qty}} dona</span>
+                </td>
+                <td class="px-5 py-3">{{p.price.toLocaleString()}} so'm</td>
+                <td class="px-5 py-3">
+                  <button @click="deleteProduct(p.id)" class="text-red-500 hover:text-red-700 text-sm">O'chirish</button>
+                </td>
+              </tr>
+              <tr v-if="products.length===0">
+                <td colspan="5" class="text-center py-10 text-gray-400">Mahsulot yo'q</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Kirim -->
+      <div v-if="page==='income'" class="p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-gray-800">📥 Kirim</h2>
+          <button @click="showAddIncome=true" class="bg-green-600 text-white px-5 py-2 rounded-xl hover:bg-green-700 transition">+ Kirim</button>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <table class="w-full">
+            <thead class="bg-gray-50 text-gray-600 text-sm">
+              <tr>
+                <th class="text-left px-5 py-3">Mahsulot</th>
+                <th class="text-left px-5 py-3">Miqdor</th>
+                <th class="text-left px-5 py-3">Narx</th>
+                <th class="text-left px-5 py-3">Sana</th>
+                <th class="text-left px-5 py-3">Izoh</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="i in incomes" :key="i.id" class="border-t hover:bg-gray-50">
+                <td class="px-5 py-3 font-medium">{{i.productName}}</td>
+                <td class="px-5 py-3 text-green-600 font-semibold">+{{i.qty}}</td>
+                <td class="px-5 py-3">{{i.price.toLocaleString()}} so'm</td>
+                <td class="px-5 py-3 text-gray-500">{{i.date}}</td>
+                <td class="px-5 py-3 text-gray-500">{{i.note}}</td>
+              </tr>
+              <tr v-if="incomes.length===0">
+                <td colspan="5" class="text-center py-10 text-gray-400">Kirim yo'q</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Chiqim -->
+      <div v-if="page==='outcome'" class="p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-bold text-gray-800">📤 Chiqim</h2>
+          <button @click="showAddOutcome=true" class="bg-red-600 text-white px-5 py-2 rounded-xl hover:bg-red-700 transition">+ Chiqim</button>
+        </div>
+        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <table class="w-full">
+            <thead class="bg-gray-50 text-gray-600 text-sm">
+              <tr>
+                <th class="text-left px-5 py-3">Mahsulot</th>
+                <th class="text-left px-5 py-3">Miqdor</th>
+                <th class="text-left px-5 py-3">Sana</th>
+                <th class="text-left px-5 py-3">Izoh</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="o in outcomes" :key="o.id" class="border-t hover:bg-gray-50">
+                <td class="px-5 py-3 font-medium">{{o.productName}}</td>
+                <td class="px-5 py-3 text-red-600 font-semibold">-{{o.qty}}</td>
+                <td class="px-5 py-3 text-gray-500">{{o.date}}</td>
+                <td class="px-5 py-3 text-gray-500">{{o.note}}</td>
+              </tr>
+              <tr v-if="outcomes.length===0">
+                <td colspan="5" class="text-center py-10 text-gray-400">Chiqim yo'q</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Barkod -->
+      <div v-if="page==='barcode'" class="p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">🔖 Barkod Yaratish</h2>
+        <div class="max-w-md bg-white rounded-2xl shadow-sm p-6">
+          <select v-model="barcodeProduct" class="w-full border rounded-xl px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+            <option value="">Mahsulot tanlang</option>
+            <option v-for="p in products" :key="p.id" :value="p">{{p.name}}</option>
+          </select>
+          <button @click="generateBarcode" :disabled="!barcodeProduct" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition">Barkod Yaratish</button>
+          <div v-if="barcodeGenerated" class="mt-6 text-center">
+            <p class="font-semibold mb-3">{{barcodeProduct.name}}</p>
+            <svg id="barcode" class="mx-auto"></svg>
+            <button @click="printBarcode" class="mt-4 bg-gray-100 text-gray-700 px-5 py-2 rounded-xl hover:bg-gray-200 transition">🖨️ Chop etish</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hisobotlar -->
+      <div v-if="page==='reports'" class="p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">📊 Hisobotlar</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="bg-white rounded-2xl shadow-sm p-5">
+            <h3 class="font-bold text-gray-700 mb-4">Jami Kirim Qiymat</h3>
+            <div class="text-3xl font-bold text-green-600">{{totalIncomeValue.toLocaleString()}} so'm</div>
+          </div>
+          <div class="bg-white rounded-2xl shadow-sm p-5">
+            <h3 class="font-bold text-gray-700 mb-4">Ombordagi Jami Qiymat</h3>
+            <div class="text-3xl font-bold text-indigo-600">{{totalStockValue.toLocaleString()}} so'm</div>
+          </div>
+          <div class="bg-white rounded-2xl shadow-sm p-5 col-span-full">
+            <h3 class="font-bold text-gray-700 mb-4">Mahsulotlar Statistikasi</h3>
+            <div v-for="p in products" :key="p.id" class="flex items-center gap-3 mb-3">
+              <span class="w-32 text-sm text-gray-600 truncate">{{p.name}}</span>
+              <div class="flex-1 bg-gray-100 rounded-full h-4">
+                <div class="bg-indigo-500 h-4 rounded-full transition-all" :style="{width: Math.min(p.qty/100*100,100)+'%'}"></div>
+              </div>
+              <span class="text-sm font-semibold w-16 text-right">{{p.qty}} dona</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modal: Mahsulot qo'shish -->
+  <div v-if="showAddProduct" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-6 w-96 shadow-xl">
+      <h3 class="text-lg font-bold mb-4">Yangi Mahsulot</h3>
+      <input v-model="newProduct.name" placeholder="Nomi" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      <input v-model="newProduct.category" placeholder="Kategoriya" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      <input v-model.number="newProduct.price" type="number" placeholder="Narxi (so'm)" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      <input v-model.number="newProduct.qty" type="number" placeholder="Boshlang'ich miqdor" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      <input v-model.number="newProduct.minQty" type="number" placeholder="Minimal miqdor (ogohlantirish)" class="w-full border rounded-xl px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      <div class="flex gap-3">
+        <button @click="addProduct" class="flex-1 bg-indigo-600 text-white py-2 rounded-xl hover:bg-indigo-700">Qo'shish</button>
+        <button @click="showAddProduct=false" class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl hover:bg-gray-200">Bekor</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Kirim -->
+  <div v-if="showAddIncome" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-6 w-96 shadow-xl">
+      <h3 class="text-lg font-bold mb-4">Kirim Qo'shish</h3>
+      <select v-model="newIncome.productId" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+        <option value="">Mahsulot tanlang</option>
+        <option v-for="p in products" :key="p.id" :value="p.id">{{p.name}}</option>
+      </select>
+      <input v-model.number="newIncome.qty" type="number" placeholder="Miqdor" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      <input v-model.number="newIncome.price" type="number" placeholder="Narxi (so'm)" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      <input v-model="newIncome.note" placeholder="Izoh (ixtiyoriy)" class="w-full border rounded-xl px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      <div class="flex gap-3">
+        <button @click="addIncome" class="flex-1 bg-green-600 text-white py-2 rounded-xl hover:bg-green-700">Kirim</button>
+        <button @click="showAddIncome=false" class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl hover:bg-gray-200">Bekor</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Chiqim -->
+  <div v-if="showAddOutcome" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-2xl p-6 w-96 shadow-xl">
+      <h3 class="text-lg font-bold mb-4">Chiqim Qo'shish</h3>
+      <select v-model="newOutcome.productId" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+        <option value="">Mahsulot tanlang</option>
+        <option v-for="p in products" :key="p.id" :value="p.id">{{p.name}}</option>
+      </select>
+      <input v-model.number="newOutcome.qty" type="number" placeholder="Miqdor" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      <input v-model="newOutcome.note" placeholder="Izoh (ixtiyoriy)" class="w-full border rounded-xl px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      <div class="flex gap-3">
+        <button @click="addOutcome" class="flex-1 bg-red-600 text-white py-2 rounded-xl hover:bg-red-700">Chiqim</button>
+        <button @click="showAddOutcome=false" class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl hover:bg-gray-200">Bekor</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const { createApp, ref, computed, nextTick } = Vue;
+
+createApp({
+  setup() {
+    const STORAGE = 'omborx_data';
+    const load = () => JSON.parse(localStorage.getItem(STORAGE) || '{"products":[],"incomes":[],"outcomes":[]}');
+    const save = () => localStorage.setItem(STORAGE, JSON.stringify({ products: products.value, incomes: incomes.value, outcomes: outcomes.value }));
+
+    const stored = load();
+    const products = ref(stored.products);
+    const incomes = ref(stored.incomes);
+    const outcomes = ref(stored.outcomes);
+    const page = ref('dashboard');
+
+    const menu = [
+      { id: 'dashboard', icon: '📊', label: 'Dashboard' },
+      { id: 'products', icon: '📦', label: 'Mahsulotlar' },
+      { id: 'income', icon: '📥', label: 'Kirim' },
+      { id: 'outcome', icon: '📤', label: 'Chiqim' },
+      { id: 'barcode', icon: '🔖', label: 'Barkod' },
+      { id: 'reports', icon: '📈', label: 'Hisobotlar' },
+    ];
+
+    // Product
+    const showAddProduct = ref(false);
+    const newProduct = ref({ name: '', category: '', price: 0, qty: 0, minQty: 5 });
+    const addProduct = () => {
+      if (!newProduct.value.name) return;
+      products.value.push({ ...newProduct.value, id: Date.now() });
+      save(); showAddProduct.value = false;
+      newProduct.value = { name: '', category: '', price: 0, qty: 0, minQty: 5 };
+    };
+    const deleteProduct = (id) => { products.value = products.value.filter(p => p.id !== id); save(); };
+
+    // Income
+    const showAddIncome = ref(false);
+    const newIncome = ref({ productId: '', qty: 0, price: 0, note: '' });
+    const addIncome = () => {
+      const p = products.value.find(x => x.id === newIncome.value.productId);
+      if (!p || !newIncome.value.qty) return;
+      p.qty += newIncome.value.qty;
+      incomes.value.push({ ...newIncome.value, id: Date.now(), productName: p.name, date: new Date().toLocaleDateString('uz-UZ') });
+      save(); showAddIncome.value = false;
+      newIncome.value = { productId: '', qty: 0, price: 0, note: '' };
+    };
+
+    // Outcome
+    const showAddOutcome = ref(false);
+    const newOutcome = ref({ productId: '', qty: 0, note: '' });
+    const addOutcome = () => {
+      const p = products.value.find(x => x.id === newOutcome.value.productId);
+      if (!p || !newOutcome.value.qty) return;
+      p.qty = Math.max(0, p.qty - newOutcome.value.qty);
+      outcomes.value.push({ ...newOutcome.value, id: Date.now(), productName: p.name, date: new Date().toLocaleDateString('uz-UZ') });
+      save(); showAddOutcome.value = false;
+      newOutcome.value = { productId: '', qty: 0, note: '' };
+    };
+
+    // Barcode
+    const barcodeProduct = ref('');
+    const barcodeGenerated = ref(false);
+    const generateBarcode = () => {
+      barcodeGenerated.value = true;
+      nextTick(() => {
+        JsBarcode("#barcode", String(barcodeProduct.value.id), { format: "CODE128", width: 2, height: 80, displayValue: true, font: "monospace" });
+      });
+    };
+    const printBarcode = () => { window.print(); };
+
+    // Computed
+    const lowStock = computed(() => products.value.filter(p => p.qty <= p.minQty));
+    const totalIncomeValue = computed(() => incomes.value.reduce((s, i) => s + i.qty * i.price, 0));
+    const totalStockValue = computed(() => products.value.reduce((s, p) => s + p.qty * p.price, 0));
+
+    return { page, menu, products, incomes, outcomes, lowStock, totalIncomeValue, totalStockValue, showAddProduct, newProduct, addProduct, deleteProduct, showAddIncome, newIncome, addIncome, showAddOutcome, newOutcome, addOutcome, barcodeProduct, barcodeGenerated, generateBarcode, printBarcode };
+  }
+}).mount('#app');
+</script>
+</body>
 </html>
