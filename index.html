@@ -8,9 +8,17 @@
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
   <style>
-    
     .sidebar-item:hover { background: rgba(255,255,255,0.1); }
     .sidebar-item.active { background: rgba(255,255,255,0.2); }
+    @media print {
+      .w-64 { display: none !important; }
+      button:not(.print-btn) { display: none !important; }
+      select, input, label { display: none !important; }
+      h2, h3 { display: block !important; }
+      #barcode-grid { display: grid !important; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+      .border.rounded-xl.p-3 { border: 1px solid #ccc !important; page-break-inside: avoid; }
+      .flex-1.overflow-auto { overflow: visible !important; }
+    }
   </style>
 </head>
 <body class="bg-gray-100 font-sans" >
@@ -174,16 +182,32 @@
       <!-- Barkod -->
       <div v-if="page==='barcode'" class="p-6">
         <h2 class="text-2xl font-bold text-gray-800 mb-6">🔖 Barkod Yaratish</h2>
-        <div class="max-w-md bg-white rounded-2xl shadow-sm p-6">
-          <select v-model="barcodeProduct" class="w-full border rounded-xl px-4 py-3 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+        <div class="max-w-xl bg-white rounded-2xl shadow-sm p-6 mb-6">
+          <select v-model="barcodeProduct" @change="barcodeGenerated=false" class="w-full border rounded-xl px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
             <option value="">Mahsulot tanlang</option>
-            <option v-for="p in products" :key="p.id" :value="p">{{p.name}}</option>
+            <option v-for="p in products" :key="p.id" :value="p">{{p.name}} (qoldiq: {{p.qty}} dona)</option>
           </select>
-          <button @click="generateBarcode" :disabled="!barcodeProduct" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition">Barkod Yaratish</button>
-          <div v-if="barcodeGenerated" class="mt-6 text-center">
-            <p class="font-semibold mb-3">{{barcodeProduct.name}}</p>
-            <svg id="barcode" class="mx-auto"></svg>
-            <button @click="printBarcode" class="mt-4 bg-gray-100 text-gray-700 px-5 py-2 rounded-xl hover:bg-gray-200 transition">🖨️ Chop etish</button>
+          <div v-if="barcodeProduct" class="flex items-center gap-3 mb-4">
+            <label class="text-sm text-gray-600 whitespace-nowrap">Necha dona:</label>
+            <input v-model.number="barcodeCount" type="number" min="1" :max="barcodeProduct.qty||999"
+              class="border rounded-xl px-4 py-2 w-32 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            <span class="text-sm text-gray-400">(max: {{barcodeProduct.qty || 999}})</span>
+          </div>
+          <button @click="generateBarcodes" :disabled="!barcodeProduct" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition font-semibold">
+            🔖 {{barcodeCount}} ta Barkod Yaratish
+          </button>
+        </div>
+        <div v-if="barcodeGenerated" class="bg-white rounded-2xl shadow-sm p-6">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-gray-700">{{barcodeProduct.name}} — {{barcodeCount}} ta barkod</h3>
+            <button @click="printBarcodes" class="bg-indigo-600 text-white px-5 py-2 rounded-xl hover:bg-indigo-700 transition">🖨️ Hammasi Chop</button>
+          </div>
+          <div id="barcode-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 print-area">
+            <div v-for="i in barcodeCount" :key="i" class="border rounded-xl p-3 text-center">
+              <p class="text-xs font-semibold text-gray-700 mb-2 truncate">{{barcodeProduct.name}}</p>
+              <svg :id="'bc-'+i" class="mx-auto"></svg>
+              <p class="text-xs text-gray-500 mt-1">#{{i}}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -330,21 +354,31 @@ createApp({
 
     // Barcode
     const barcodeProduct = ref('');
+    const barcodeCount = ref(1);
     const barcodeGenerated = ref(false);
-    const generateBarcode = () => {
+    const generateBarcodes = () => {
+      if (!barcodeProduct.value) return;
+      if (!barcodeCount.value || barcodeCount.value < 1) barcodeCount.value = 1;
       barcodeGenerated.value = true;
       nextTick(() => {
-        JsBarcode("#barcode", String(barcodeProduct.value.id), { format: "CODE128", width: 2, height: 80, displayValue: true, font: "monospace" });
+        for (let i = 1; i <= barcodeCount.value; i++) {
+          const el = document.getElementById('bc-' + i);
+          if (el) {
+            JsBarcode(el, String(barcodeProduct.value.id) + '-' + String(i).padStart(3,'0'), {
+              format: "CODE128", width: 2, height: 60, displayValue: true, font: "monospace", fontSize: 11
+            });
+          }
+        }
       });
     };
-    const printBarcode = () => { window.print(); };
+    const printBarcodes = () => { window.print(); };
 
     // Computed
     const lowStock = computed(() => products.value.filter(p => p.qty <= p.minQty));
     const totalIncomeValue = computed(() => incomes.value.reduce((s, i) => s + i.qty * i.price, 0));
     const totalStockValue = computed(() => products.value.reduce((s, p) => s + p.qty * p.price, 0));
 
-    return { page, menu, products, incomes, outcomes, lowStock, totalIncomeValue, totalStockValue, showAddProduct, newProduct, addProduct, deleteProduct, showAddIncome, newIncome, addIncome, showAddOutcome, newOutcome, addOutcome, barcodeProduct, barcodeGenerated, generateBarcode, printBarcode };
+    return { page, menu, products, incomes, outcomes, lowStock, totalIncomeValue, totalStockValue, showAddProduct, newProduct, addProduct, deleteProduct, showAddIncome, newIncome, addIncome, showAddOutcome, newOutcome, addOutcome, barcodeProduct, barcodeCount, barcodeGenerated, generateBarcodes, printBarcodes };
   }
 }).mount('#app');
 </script>
