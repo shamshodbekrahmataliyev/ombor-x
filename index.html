@@ -1,386 +1,766 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ombor X - Ombor Boshqaruv Tizimi</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-  <style>
-    .sidebar-item:hover { background: rgba(255,255,255,0.1); }
-    .sidebar-item.active { background: rgba(255,255,255,0.2); }
-    @media print {
-      .w-64 { display: none !important; }
-      button:not(.print-btn) { display: none !important; }
-      select, input, label { display: none !important; }
-      h2, h3 { display: block !important; }
-      #barcode-grid { display: grid !important; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-      .border.rounded-xl.p-3 { border: 1px solid #ccc !important; page-break-inside: avoid; }
-      .flex-1.overflow-auto { overflow: visible !important; }
-    }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ombor X – Ombor Boshqaruv Tizimi</title>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif}
+body{background:#f1f5f9;display:flex;height:100vh;overflow:hidden}
+
+/* Sidebar */
+#sidebar{width:240px;background:#1e3a5f;color:#fff;display:flex;flex-direction:column;flex-shrink:0}
+#sidebar .logo{padding:20px;border-bottom:1px solid rgba(255,255,255,.15)}
+#sidebar .logo h1{font-size:22px;font-weight:700}
+#sidebar .logo p{font-size:12px;color:#93c5fd;margin-top:4px}
+#sidebar nav{flex:1;padding:12px}
+#sidebar nav button{display:flex;align-items:center;gap:10px;width:100%;padding:11px 14px;border:none;background:transparent;color:#fff;cursor:pointer;border-radius:10px;font-size:14px;text-align:left;transition:.2s}
+#sidebar nav button:hover{background:rgba(255,255,255,.12)}
+#sidebar nav button.active{background:rgba(255,255,255,.22);font-weight:600}
+#sidebar .stats{padding:14px;border-top:1px solid rgba(255,255,255,.15);font-size:12px;color:#93c5fd;line-height:1.8}
+#sidebar .stats strong{color:#fff}
+
+/* Main */
+#main{flex:1;overflow-y:auto}
+.page{display:none;padding:24px}
+.page.active{display:block}
+h2.page-title{font-size:22px;font-weight:700;color:#1e293b;margin-bottom:20px}
+
+/* Cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px;margin-bottom:24px}
+.card{background:#fff;border-radius:16px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-left:4px solid #3b82f6}
+.card.green{border-color:#22c55e}.card.purple{border-color:#a855f7}.card.orange{border-color:#f97316}.card.red{border-color:#ef4444}
+.card .val{font-size:28px;font-weight:700;color:#1e293b}
+.card .lbl{font-size:13px;color:#64748b;margin-top:4px}
+
+/* Table */
+.tbl-wrap{background:#fff;border-radius:16px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden}
+table{width:100%;border-collapse:collapse}
+thead th{background:#f8fafc;padding:12px 16px;text-align:left;font-size:13px;color:#64748b;font-weight:600}
+tbody td{padding:11px 16px;border-top:1px solid #f1f5f9;font-size:14px}
+tbody tr:hover{background:#f8fafc}
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
+.badge.green{background:#dcfce7;color:#16a34a}.badge.red{background:#fee2e2;color:#dc2626}.badge.blue{background:#dbeafe;color:#1d4ed8}.badge.yellow{background:#fef9c3;color:#a16207}
+
+/* Buttons */
+.btn{padding:9px 20px;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;transition:.2s}
+.btn-primary{background:#1e3a5f;color:#fff}.btn-primary:hover{background:#1e40af}
+.btn-green{background:#16a34a;color:#fff}.btn-green:hover{background:#15803d}
+.btn-red{background:#ef4444;color:#fff}.btn-red:hover{background:#dc2626}
+.btn-gray{background:#e2e8f0;color:#475569}.btn-gray:hover{background:#cbd5e1}
+.btn-outline{background:#fff;border:1.5px solid #1e3a5f;color:#1e3a5f}.btn-outline:hover{background:#eff6ff}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* Forms */
+.form-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.form-group{display:flex;flex-direction:column;gap:6px;flex:1;min-width:140px}
+.form-group label{font-size:13px;font-weight:600;color:#475569}
+input,select,textarea{padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:14px;outline:none;transition:.2s;width:100%}
+input:focus,select:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:20px;padding:28px;width:440px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h3{font-size:18px;font-weight:700;margin-bottom:18px;color:#1e293b}
+.modal-footer{display:flex;gap:10px;margin-top:20px}
+.modal-footer button{flex:1}
+
+/* Page header */
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.page-header h2{margin-bottom:0}
+
+/* Barcode */
+.barcode-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:20px}
+.barcode-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:10px;text-align:center}
+.barcode-card .bc-name{font-size:11px;font-weight:700;color:#1e293b;margin-bottom:4px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.barcode-card .bc-num{font-size:10px;color:#64748b;margin-top:3px}
+.barcode-card svg{max-width:100%}
+
+/* Scan tizimi */
+.scan-box{background:#fff;border-radius:16px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:20px}
+.scan-input-row{display:flex;gap:10px;align-items:center}
+.scan-input-row input{font-size:16px;font-weight:600;letter-spacing:2px}
+.scan-result{margin-top:16px;padding:16px;border-radius:12px;background:#f0fdf4;border:1.5px solid #86efac;display:none}
+.scan-result.show{display:block}
+.scan-result.error{background:#fff1f2;border-color:#fca5a5}
+.scan-list{background:#fff;border-radius:16px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.scan-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:14px}
+.scan-item:last-child{border-bottom:none}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;right:24px;background:#1e3a5f;color:#fff;padding:14px 22px;border-radius:14px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.2);transform:translateY(100px);opacity:0;transition:.3s;z-index:9999}
+#toast.show{transform:translateY(0);opacity:1}
+
+/* Print */
+@media print{
+  #sidebar,#main > .page:not(.active) .page-header,.page-header button,.scan-box,h2.page-title,#print-btn-row{display:none!important}
+  body{display:block}
+  #main{overflow:visible}
+  .page.active{display:block;padding:0}
+  .barcode-grid{display:grid!important;grid-template-columns:repeat(4,1fr);gap:8px}
+  .barcode-card{border:1px solid #ccc;page-break-inside:avoid;padding:6px}
+}
+</style>
 </head>
-<body class="bg-gray-100 font-sans" >
-<div id="app">
-  <div class="flex h-screen overflow-hidden">
+<body>
 
-    <!-- Sidebar -->
-    <div class="w-64 bg-indigo-800 text-white flex flex-col shrink-0">
-      <div class="p-5 border-b border-indigo-700">
-        <h1 class="text-2xl font-bold">🏭 Ombor X</h1>
-        <p class="text-indigo-300 text-sm mt-1">Ombor boshqaruv tizimi</p>
-      </div>
-      <nav class="flex-1 p-4 space-y-1">
-        <button v-for="item in menu" :key="item.id"
-          @click="page = item.id"
-          :class="['sidebar-item w-full text-left px-4 py-3 rounded-lg flex items-center gap-3 transition', page===item.id ? 'active font-semibold' : '']">
-          <span class="text-xl">{{item.icon}}</span> {{item.label}}
-        </button>
-      </nav>
-      <div class="p-4 border-t border-indigo-700 text-indigo-300 text-sm">
-        Jami mahsulot: <strong class="text-white">{{products.length}}</strong><br>
-        Kam qoldiq: <strong class="text-red-300">{{lowStock.length}}</strong>
-      </div>
-    </div>
-
-    <!-- Main -->
-    <div class="flex-1 overflow-auto">
-
-      <!-- Dashboard -->
-      <div v-if="page==='dashboard'" class="p-6">
-        <h2 class="text-2xl font-bold text-gray-800 mb-6">📊 Dashboard</h2>
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div class="bg-white rounded-2xl p-5 shadow-sm border-l-4 border-indigo-500">
-            <div class="text-3xl font-bold text-indigo-600">{{products.length}}</div>
-            <div class="text-gray-500 mt-1">Mahsulotlar</div>
-          </div>
-          <div class="bg-white rounded-2xl p-5 shadow-sm border-l-4 border-green-500">
-            <div class="text-3xl font-bold text-green-600">{{incomes.length}}</div>
-            <div class="text-gray-500 mt-1">Kirimlar</div>
-          </div>
-          <div class="bg-white rounded-2xl p-5 shadow-sm border-l-4 border-red-500">
-            <div class="text-3xl font-bold text-red-600">{{outcomes.length}}</div>
-            <div class="text-gray-500 mt-1">Chiqimlar</div>
-          </div>
-          <div class="bg-white rounded-2xl p-5 shadow-sm border-l-4 border-yellow-500">
-            <div class="text-3xl font-bold text-yellow-600">{{lowStock.length}}</div>
-            <div class="text-gray-500 mt-1">Kam qoldiq</div>
-          </div>
-        </div>
-        <div class="bg-white rounded-2xl p-5 shadow-sm">
-          <h3 class="font-bold text-gray-700 mb-4">⚠️ Kam qoldiq mahsulotlar</h3>
-          <div v-if="lowStock.length===0" class="text-gray-400 text-center py-4">Barcha mahsulotlar yetarli 👍</div>
-          <div v-for="p in lowStock" :key="p.id" class="flex items-center justify-between py-2 border-b last:border-0">
-            <span class="font-medium">{{p.name}}</span>
-            <span class="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm">{{p.qty}} dona</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Mahsulotlar -->
-      <div v-if="page==='products'" class="p-6">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-bold text-gray-800">📦 Mahsulotlar</h2>
-          <button @click="showAddProduct=true" class="bg-indigo-600 text-white px-5 py-2 rounded-xl hover:bg-indigo-700 transition">+ Qo'shish</button>
-        </div>
-        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <table class="w-full">
-            <thead class="bg-gray-50 text-gray-600 text-sm">
-              <tr>
-                <th class="text-left px-5 py-3">Nomi</th>
-                <th class="text-left px-5 py-3">Kategoriya</th>
-                <th class="text-left px-5 py-3">Miqdor</th>
-                <th class="text-left px-5 py-3">Narxi</th>
-                <th class="text-left px-5 py-3">Amal</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="p in products" :key="p.id" class="border-t hover:bg-gray-50">
-                <td class="px-5 py-3 font-medium">{{p.name}}</td>
-                <td class="px-5 py-3 text-gray-500">{{p.category}}</td>
-                <td class="px-5 py-3">
-                  <span :class="p.qty<=p.minQty ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'" class="px-2 py-1 rounded-full text-sm">{{p.qty}} dona</span>
-                </td>
-                <td class="px-5 py-3">{{p.price.toLocaleString()}} so'm</td>
-                <td class="px-5 py-3">
-                  <button @click="deleteProduct(p.id)" class="text-red-500 hover:text-red-700 text-sm">O'chirish</button>
-                </td>
-              </tr>
-              <tr v-if="products.length===0">
-                <td colspan="5" class="text-center py-10 text-gray-400">Mahsulot yo'q</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Kirim -->
-      <div v-if="page==='income'" class="p-6">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-bold text-gray-800">📥 Kirim</h2>
-          <button @click="showAddIncome=true" class="bg-green-600 text-white px-5 py-2 rounded-xl hover:bg-green-700 transition">+ Kirim</button>
-        </div>
-        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <table class="w-full">
-            <thead class="bg-gray-50 text-gray-600 text-sm">
-              <tr>
-                <th class="text-left px-5 py-3">Mahsulot</th>
-                <th class="text-left px-5 py-3">Miqdor</th>
-                <th class="text-left px-5 py-3">Narx</th>
-                <th class="text-left px-5 py-3">Sana</th>
-                <th class="text-left px-5 py-3">Izoh</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="i in incomes" :key="i.id" class="border-t hover:bg-gray-50">
-                <td class="px-5 py-3 font-medium">{{i.productName}}</td>
-                <td class="px-5 py-3 text-green-600 font-semibold">+{{i.qty}}</td>
-                <td class="px-5 py-3">{{i.price.toLocaleString()}} so'm</td>
-                <td class="px-5 py-3 text-gray-500">{{i.date}}</td>
-                <td class="px-5 py-3 text-gray-500">{{i.note}}</td>
-              </tr>
-              <tr v-if="incomes.length===0">
-                <td colspan="5" class="text-center py-10 text-gray-400">Kirim yo'q</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Chiqim -->
-      <div v-if="page==='outcome'" class="p-6">
-        <div class="flex justify-between items-center mb-6">
-          <h2 class="text-2xl font-bold text-gray-800">📤 Chiqim</h2>
-          <button @click="showAddOutcome=true" class="bg-red-600 text-white px-5 py-2 rounded-xl hover:bg-red-700 transition">+ Chiqim</button>
-        </div>
-        <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <table class="w-full">
-            <thead class="bg-gray-50 text-gray-600 text-sm">
-              <tr>
-                <th class="text-left px-5 py-3">Mahsulot</th>
-                <th class="text-left px-5 py-3">Miqdor</th>
-                <th class="text-left px-5 py-3">Sana</th>
-                <th class="text-left px-5 py-3">Izoh</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="o in outcomes" :key="o.id" class="border-t hover:bg-gray-50">
-                <td class="px-5 py-3 font-medium">{{o.productName}}</td>
-                <td class="px-5 py-3 text-red-600 font-semibold">-{{o.qty}}</td>
-                <td class="px-5 py-3 text-gray-500">{{o.date}}</td>
-                <td class="px-5 py-3 text-gray-500">{{o.note}}</td>
-              </tr>
-              <tr v-if="outcomes.length===0">
-                <td colspan="5" class="text-center py-10 text-gray-400">Chiqim yo'q</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- Barkod -->
-      <div v-if="page==='barcode'" class="p-6">
-        <h2 class="text-2xl font-bold text-gray-800 mb-6">🔖 Barkod Yaratish</h2>
-        <div class="max-w-xl bg-white rounded-2xl shadow-sm p-6 mb-6">
-          <select v-model="barcodeProduct" @change="barcodeGenerated=false" class="w-full border rounded-xl px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
-            <option value="">Mahsulot tanlang</option>
-            <option v-for="p in products" :key="p.id" :value="p">{{p.name}} (qoldiq: {{p.qty}} dona)</option>
-          </select>
-          <div v-if="barcodeProduct" class="flex items-center gap-3 mb-4">
-            <label class="text-sm text-gray-600 whitespace-nowrap">Necha dona:</label>
-            <input v-model.number="barcodeCount" type="number" min="1" :max="barcodeProduct.qty||999"
-              class="border rounded-xl px-4 py-2 w-32 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-            <span class="text-sm text-gray-400">(max: {{barcodeProduct.qty || 999}})</span>
-          </div>
-          <button @click="generateBarcodes" :disabled="!barcodeProduct" class="w-full bg-indigo-600 text-white py-3 rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition font-semibold">
-            🔖 {{barcodeCount}} ta Barkod Yaratish
-          </button>
-        </div>
-        <div v-if="barcodeGenerated" class="bg-white rounded-2xl shadow-sm p-6">
-          <div class="flex justify-between items-center mb-4">
-            <h3 class="font-bold text-gray-700">{{barcodeProduct.name}} — {{barcodeCount}} ta barkod</h3>
-            <button @click="printBarcodes" class="bg-indigo-600 text-white px-5 py-2 rounded-xl hover:bg-indigo-700 transition">🖨️ Hammasi Chop</button>
-          </div>
-          <div id="barcode-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 print-area">
-            <div v-for="i in barcodeCount" :key="i" class="border rounded-xl p-3 text-center">
-              <p class="text-xs font-semibold text-gray-700 mb-2 truncate">{{barcodeProduct.name}}</p>
-              <svg :id="'bc-'+i" class="mx-auto"></svg>
-              <p class="text-xs text-gray-500 mt-1">#{{i}}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Hisobotlar -->
-      <div v-if="page==='reports'" class="p-6">
-        <h2 class="text-2xl font-bold text-gray-800 mb-6">📊 Hisobotlar</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="bg-white rounded-2xl shadow-sm p-5">
-            <h3 class="font-bold text-gray-700 mb-4">Jami Kirim Qiymat</h3>
-            <div class="text-3xl font-bold text-green-600">{{totalIncomeValue.toLocaleString()}} so'm</div>
-          </div>
-          <div class="bg-white rounded-2xl shadow-sm p-5">
-            <h3 class="font-bold text-gray-700 mb-4">Ombordagi Jami Qiymat</h3>
-            <div class="text-3xl font-bold text-indigo-600">{{totalStockValue.toLocaleString()}} so'm</div>
-          </div>
-          <div class="bg-white rounded-2xl shadow-sm p-5 col-span-full">
-            <h3 class="font-bold text-gray-700 mb-4">Mahsulotlar Statistikasi</h3>
-            <div v-for="p in products" :key="p.id" class="flex items-center gap-3 mb-3">
-              <span class="w-32 text-sm text-gray-600 truncate">{{p.name}}</span>
-              <div class="flex-1 bg-gray-100 rounded-full h-4">
-                <div class="bg-indigo-500 h-4 rounded-full transition-all" :style="{width: Math.min(p.qty/100*100,100)+'%'}"></div>
-              </div>
-              <span class="text-sm font-semibold w-16 text-right">{{p.qty}} dona</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
+<!-- SIDEBAR -->
+<div id="sidebar">
+  <div class="logo">
+    <h1>🏭 Ombor X</h1>
+    <p>Ombor boshqaruv tizimi</p>
   </div>
+  <nav id="sidenav"></nav>
+  <div class="stats" id="sidebar-stats"></div>
+</div>
 
-  <!-- Modal: Mahsulot qo'shish -->
-  <div v-if="showAddProduct" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-2xl p-6 w-96 shadow-xl">
-      <h3 class="text-lg font-bold mb-4">Yangi Mahsulot</h3>
-      <input v-model="newProduct.name" placeholder="Nomi" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-      <input v-model="newProduct.category" placeholder="Kategoriya" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-      <input v-model.number="newProduct.price" type="number" placeholder="Narxi (so'm)" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-      <input v-model.number="newProduct.qty" type="number" placeholder="Boshlang'ich miqdor" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-      <input v-model.number="newProduct.minQty" type="number" placeholder="Minimal miqdor (ogohlantirish)" class="w-full border rounded-xl px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-      <div class="flex gap-3">
-        <button @click="addProduct" class="flex-1 bg-indigo-600 text-white py-2 rounded-xl hover:bg-indigo-700">Qo'shish</button>
-        <button @click="showAddProduct=false" class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl hover:bg-gray-200">Bekor</button>
+<!-- MAIN -->
+<div id="main">
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page">
+    <h2 class="page-title">📊 Dashboard</h2>
+    <div class="cards" id="dash-cards"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div class="tbl-wrap" style="padding:20px">
+        <h3 style="font-weight:700;color:#1e293b;margin-bottom:14px">⚠️ Kam qoldiq mahsulotlar</h3>
+        <div id="low-stock-list"></div>
+      </div>
+      <div class="tbl-wrap" style="padding:20px">
+        <h3 style="font-weight:700;color:#1e293b;margin-bottom:14px">📋 So'nggi kirimlar</h3>
+        <div id="recent-incomes"></div>
       </div>
     </div>
   </div>
 
-  <!-- Modal: Kirim -->
-  <div v-if="showAddIncome" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-2xl p-6 w-96 shadow-xl">
-      <h3 class="text-lg font-bold mb-4">Kirim Qo'shish</h3>
-      <select v-model="newIncome.productId" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
-        <option value="">Mahsulot tanlang</option>
-        <option v-for="p in products" :key="p.id" :value="p.id">{{p.name}}</option>
-      </select>
-      <input v-model.number="newIncome.qty" type="number" placeholder="Miqdor" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-      <input v-model.number="newIncome.price" type="number" placeholder="Narxi (so'm)" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-      <input v-model="newIncome.note" placeholder="Izoh (ixtiyoriy)" class="w-full border rounded-xl px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-      <div class="flex gap-3">
-        <button @click="addIncome" class="flex-1 bg-green-600 text-white py-2 rounded-xl hover:bg-green-700">Kirim</button>
-        <button @click="showAddIncome=false" class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl hover:bg-gray-200">Bekor</button>
-      </div>
+  <!-- MAHSULOTLAR -->
+  <div id="page-products" class="page">
+    <div class="page-header">
+      <h2 class="page-title">📦 Mahsulotlar</h2>
+      <button class="btn btn-primary" onclick="openModal('add-product')">+ Mahsulot qo'shish</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Nomi</th><th>Kategoriya</th><th>Narxi</th><th>Miqdor</th><th>Min.qoldiq</th><th>Holati</th><th>Amal</th></tr></thead>
+        <tbody id="products-tbody"></tbody>
+      </table>
     </div>
   </div>
 
-  <!-- Modal: Chiqim -->
-  <div v-if="showAddOutcome" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-2xl p-6 w-96 shadow-xl">
-      <h3 class="text-lg font-bold mb-4">Chiqim Qo'shish</h3>
-      <select v-model="newOutcome.productId" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400">
-        <option value="">Mahsulot tanlang</option>
-        <option v-for="p in products" :key="p.id" :value="p.id">{{p.name}}</option>
-      </select>
-      <input v-model.number="newOutcome.qty" type="number" placeholder="Miqdor" class="w-full border rounded-xl px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-      <input v-model="newOutcome.note" placeholder="Izoh (ixtiyoriy)" class="w-full border rounded-xl px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
-      <div class="flex gap-3">
-        <button @click="addOutcome" class="flex-1 bg-red-600 text-white py-2 rounded-xl hover:bg-red-700">Chiqim</button>
-        <button @click="showAddOutcome=false" class="flex-1 bg-gray-100 text-gray-700 py-2 rounded-xl hover:bg-gray-200">Bekor</button>
-      </div>
+  <!-- KIRIM -->
+  <div id="page-income" class="page">
+    <div class="page-header">
+      <h2 class="page-title">📥 Kirim</h2>
+      <button class="btn btn-green" onclick="openModal('add-income')">+ Kirim qo'shish</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Mahsulot</th><th>Miqdor</th><th>Narx</th><th>Sana</th><th>Izoh</th></tr></thead>
+        <tbody id="income-tbody"></tbody>
+      </table>
     </div>
   </div>
 
+  <!-- CHIQIM -->
+  <div id="page-outcome" class="page">
+    <div class="page-header">
+      <h2 class="page-title">📤 Chiqim</h2>
+      <button class="btn btn-red" onclick="openModal('add-outcome')">+ Chiqim qo'shish</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Mahsulot</th><th>Miqdor</th><th>Sabab</th><th>Sana</th></tr></thead>
+        <tbody id="outcome-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- BARKOD -->
+  <div id="page-barcode" class="page">
+    <h2 class="page-title">🔖 Barkod Yaratish</h2>
+    <div class="tbl-wrap" style="padding:20px;margin-bottom:20px">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Mahsulot tanlang</label>
+          <select id="bc-product"></select>
+        </div>
+        <div class="form-group" style="max-width:140px">
+          <label>Necha dona</label>
+          <input type="number" id="bc-count" value="1" min="1" max="500"/>
+        </div>
+        <div class="form-group" style="max-width:160px;justify-content:flex-end">
+          <label>&nbsp;</label>
+          <button class="btn btn-primary" onclick="generateBarcodes()">🔖 Yaratish</button>
+        </div>
+      </div>
+      <div id="print-btn-row" style="display:none;margin-top:8px">
+        <button class="btn btn-gray" onclick="window.print()">🖨️ Hammasini chop etish</button>
+        <span id="bc-info" style="margin-left:12px;font-size:13px;color:#64748b"></span>
+      </div>
+    </div>
+    <div class="barcode-grid" id="barcode-grid"></div>
+  </div>
+
+  <!-- SANOQ (INVENTAR TEKSHIRISH) -->
+  <div id="page-scan" class="page">
+    <h2 class="page-title">📷 Barkod Sanoq Tizimi</h2>
+    <div class="scan-box">
+      <h3 style="font-weight:700;margin-bottom:12px;color:#1e293b">Barkod Skanerlash</h3>
+      <div class="scan-input-row">
+        <input type="text" id="scan-input" placeholder="Barkodni skanerlang yoki kiriting..." autocomplete="off" onkeydown="if(event.key==='Enter')scanBarcode()"/>
+        <button class="btn btn-primary" onclick="scanBarcode()">Tekshirish</button>
+        <button class="btn btn-gray" onclick="clearScan()">Tozalash</button>
+      </div>
+      <div id="scan-result" class="scan-result"></div>
+    </div>
+    <div class="scan-list">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h3 style="font-weight:700;color:#1e293b">📋 Skanerlangan mahsulotlar</h3>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-green" onclick="confirmCount()" id="confirm-btn" style="display:none">✅ Sanoqni tasdiqlash</button>
+          <button class="btn btn-gray" onclick="clearAllScans()">🗑️ Tozalash</button>
+        </div>
+      </div>
+      <div id="scan-list-body">
+        <p style="color:#94a3b8;text-align:center;padding:20px">Hali hech narsa skanerlanmagan</p>
+      </div>
+      <div id="scan-summary" style="display:none;margin-top:14px;padding-top:14px;border-top:2px solid #e2e8f0"></div>
+    </div>
+  </div>
+
+  <!-- HISOBOT -->
+  <div id="page-report" class="page">
+    <h2 class="page-title">📈 Hisobot</h2>
+    <div class="cards" id="report-cards"></div>
+    <div class="tbl-wrap" style="padding:20px">
+      <h3 style="font-weight:700;margin-bottom:14px;color:#1e293b">Mahsulotlar bo'yicha hisobot</h3>
+      <table>
+        <thead><tr><th>Mahsulot</th><th>Ombordagi miqdor</th><th>Jami kirim</th><th>Jami chiqim</th><th>Qiymat</th></tr></thead>
+        <tbody id="report-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- MODAL: Mahsulot qo'shish -->
+<div class="modal-bg" id="modal-add-product">
+  <div class="modal">
+    <h3>📦 Yangi Mahsulot</h3>
+    <div class="form-row">
+      <div class="form-group"><label>Nomi *</label><input id="p-name" placeholder="Mahsulot nomi"/></div>
+      <div class="form-group"><label>Kategoriya</label><input id="p-cat" placeholder="Masalan: Elektronika"/></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Narxi (so'm)</label><input id="p-price" type="number" placeholder="0"/></div>
+      <div class="form-group"><label>Boshlang'ich miqdor</label><input id="p-qty" type="number" placeholder="0"/></div>
+      <div class="form-group"><label>Min. qoldiq</label><input id="p-min" type="number" placeholder="5"/></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="addProduct()">Saqlash</button>
+      <button class="btn btn-gray" onclick="closeModal('add-product')">Bekor</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Kirim -->
+<div class="modal-bg" id="modal-add-income">
+  <div class="modal">
+    <h3>📥 Kirim Qo'shish</h3>
+    <div class="form-group" style="margin-bottom:14px"><label>Mahsulot *</label><select id="i-product"></select></div>
+    <div class="form-row">
+      <div class="form-group"><label>Miqdor *</label><input id="i-qty" type="number" placeholder="0" min="1"/></div>
+      <div class="form-group"><label>Narxi (so'm)</label><input id="i-price" type="number" placeholder="0"/></div>
+    </div>
+    <div class="form-group" style="margin-bottom:14px"><label>Sana</label><input id="i-date" type="date"/></div>
+    <div class="form-group" style="margin-bottom:0"><label>Izoh</label><input id="i-note" placeholder="Ixtiyoriy"/></div>
+    <div class="modal-footer">
+      <button class="btn btn-green" onclick="addIncome()">Saqlash</button>
+      <button class="btn btn-gray" onclick="closeModal('add-income')">Bekor</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Chiqim -->
+<div class="modal-bg" id="modal-add-outcome">
+  <div class="modal">
+    <h3>📤 Chiqim Qo'shish</h3>
+    <div class="form-group" style="margin-bottom:14px"><label>Mahsulot *</label><select id="o-product"></select></div>
+    <div class="form-row">
+      <div class="form-group"><label>Miqdor *</label><input id="o-qty" type="number" placeholder="0" min="1"/></div>
+      <div class="form-group"><label>Sabab</label><input id="o-reason" placeholder="Masalan: Sotuv"/></div>
+    </div>
+    <div class="form-group" style="margin-bottom:0"><label>Sana</label><input id="o-date" type="date"/></div>
+    <div class="modal-footer">
+      <button class="btn btn-red" onclick="addOutcome()">Saqlash</button>
+      <button class="btn btn-gray" onclick="closeModal('add-outcome')">Bekor</button>
+    </div>
+  </div>
 </div>
 
 <script>
-const { createApp, ref, computed, nextTick } = Vue;
+// ==================== DATA ====================
+const STORE = 'omborx_v3';
+function loadData() {
+  return JSON.parse(localStorage.getItem(STORE) || '{"products":[],"incomes":[],"outcomes":[],"barcodes":{}}');
+}
+function saveData(d) { localStorage.setItem(STORE, JSON.stringify(d)); }
+let DB = loadData();
 
-createApp({
-  setup() {
-    const STORAGE = 'omborx_data';
-    const load = () => JSON.parse(localStorage.getItem(STORAGE) || '{"products":[],"incomes":[],"outcomes":[]}');
-    const save = () => localStorage.setItem(STORAGE, JSON.stringify({ products: products.value, incomes: incomes.value, outcomes: outcomes.value }));
+// ==================== NAVIGATION ====================
+const PAGES = [
+  {id:'dashboard', icon:'📊', label:'Dashboard'},
+  {id:'products',  icon:'📦', label:'Mahsulotlar'},
+  {id:'income',    icon:'📥', label:'Kirim'},
+  {id:'outcome',   icon:'📤', label:'Chiqim'},
+  {id:'barcode',   icon:'🔖', label:'Barkod'},
+  {id:'scan',      icon:'📷', label:'Sanoq tizimi'},
+  {id:'report',    icon:'📈', label:'Hisobot'},
+];
 
-    const stored = load();
-    const products = ref(stored.products);
-    const incomes = ref(stored.incomes);
-    const outcomes = ref(stored.outcomes);
-    const page = ref('dashboard');
+function buildNav() {
+  const nav = document.getElementById('sidenav');
+  nav.innerHTML = PAGES.map(p =>
+    `<button id="nav-${p.id}" onclick="gotoPage('${p.id}')">${p.icon} ${p.label}</button>`
+  ).join('');
+}
 
-    const menu = [
-      { id: 'dashboard', icon: '📊', label: 'Dashboard' },
-      { id: 'products', icon: '📦', label: 'Mahsulotlar' },
-      { id: 'income', icon: '📥', label: 'Kirim' },
-      { id: 'outcome', icon: '📤', label: 'Chiqim' },
-      { id: 'barcode', icon: '🔖', label: 'Barkod' },
-      { id: 'reports', icon: '📈', label: 'Hisobotlar' },
-    ];
+function gotoPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('#sidenav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.getElementById('nav-' + id).classList.add('active');
+  renderPage(id);
+}
 
-    // Product
-    const showAddProduct = ref(false);
-    const newProduct = ref({ name: '', category: '', price: 0, qty: 0, minQty: 5 });
-    const addProduct = () => {
-      if (!newProduct.value.name) return;
-      products.value.push({ ...newProduct.value, id: Date.now() });
-      save(); showAddProduct.value = false;
-      newProduct.value = { name: '', category: '', price: 0, qty: 0, minQty: 5 };
-    };
-    const deleteProduct = (id) => { products.value = products.value.filter(p => p.id !== id); save(); };
+function renderPage(id) {
+  if (id === 'dashboard') renderDashboard();
+  else if (id === 'products') renderProducts();
+  else if (id === 'income') renderIncome();
+  else if (id === 'outcome') renderOutcome();
+  else if (id === 'barcode') renderBarcodeSetup();
+  else if (id === 'scan') renderScanPage();
+  else if (id === 'report') renderReport();
+  updateSidebarStats();
+}
 
-    // Income
-    const showAddIncome = ref(false);
-    const newIncome = ref({ productId: '', qty: 0, price: 0, note: '' });
-    const addIncome = () => {
-      const p = products.value.find(x => x.id === newIncome.value.productId);
-      if (!p || !newIncome.value.qty) return;
-      p.qty += newIncome.value.qty;
-      incomes.value.push({ ...newIncome.value, id: Date.now(), productName: p.name, date: new Date().toLocaleDateString('uz-UZ') });
-      save(); showAddIncome.value = false;
-      newIncome.value = { productId: '', qty: 0, price: 0, note: '' };
-    };
+// ==================== UTILS ====================
+function toast(msg, dur=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+function fmtNum(n) { return Number(n||0).toLocaleString('uz-UZ'); }
+function today() { return new Date().toISOString().slice(0,10); }
 
-    // Outcome
-    const showAddOutcome = ref(false);
-    const newOutcome = ref({ productId: '', qty: 0, note: '' });
-    const addOutcome = () => {
-      const p = products.value.find(x => x.id === newOutcome.value.productId);
-      if (!p || !newOutcome.value.qty) return;
-      p.qty = Math.max(0, p.qty - newOutcome.value.qty);
-      outcomes.value.push({ ...newOutcome.value, id: Date.now(), productName: p.name, date: new Date().toLocaleDateString('uz-UZ') });
-      save(); showAddOutcome.value = false;
-      newOutcome.value = { productId: '', qty: 0, note: '' };
-    };
-
-    // Barcode
-    const barcodeProduct = ref('');
-    const barcodeCount = ref(1);
-    const barcodeGenerated = ref(false);
-    const generateBarcodes = () => {
-      if (!barcodeProduct.value) return;
-      if (!barcodeCount.value || barcodeCount.value < 1) barcodeCount.value = 1;
-      barcodeGenerated.value = true;
-      nextTick(() => {
-        for (let i = 1; i <= barcodeCount.value; i++) {
-          const el = document.getElementById('bc-' + i);
-          if (el) {
-            JsBarcode(el, String(barcodeProduct.value.id) + '-' + String(i).padStart(3,'0'), {
-              format: "CODE128", width: 2, height: 60, displayValue: true, font: "monospace", fontSize: 11
-            });
-          }
-        }
-      });
-    };
-    const printBarcodes = () => { window.print(); };
-
-    // Computed
-    const lowStock = computed(() => products.value.filter(p => p.qty <= p.minQty));
-    const totalIncomeValue = computed(() => incomes.value.reduce((s, i) => s + i.qty * i.price, 0));
-    const totalStockValue = computed(() => products.value.reduce((s, p) => s + p.qty * p.price, 0));
-
-    return { page, menu, products, incomes, outcomes, lowStock, totalIncomeValue, totalStockValue, showAddProduct, newProduct, addProduct, deleteProduct, showAddIncome, newIncome, addIncome, showAddOutcome, newOutcome, addOutcome, barcodeProduct, barcodeCount, barcodeGenerated, generateBarcodes, printBarcodes };
+// ==================== MODAL ====================
+function openModal(id) {
+  document.getElementById('modal-'+id).classList.add('open');
+  // populate product selects
+  if (id === 'add-income' || id === 'add-outcome') {
+    const sel = id === 'add-income' ? 'i-product' : 'o-product';
+    const el = document.getElementById(sel);
+    el.innerHTML = DB.products.map(p => `<option value="${p.id}">${p.name} (${p.qty} dona)</option>`).join('');
+    const dateEl = document.getElementById(id === 'add-income' ? 'i-date' : 'o-date');
+    if (dateEl) dateEl.value = today();
   }
-}).mount('#app');
+}
+function closeModal(id) { document.getElementById('modal-'+id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open'); }));
+
+// ==================== PRODUCTS ====================
+function addProduct() {
+  const name = document.getElementById('p-name').value.trim();
+  if (!name) return toast('❌ Nomi kiritilmagan!');
+  const p = {
+    id: Date.now(),
+    name,
+    cat: document.getElementById('p-cat').value.trim() || 'Umumiy',
+    price: +document.getElementById('p-price').value || 0,
+    qty: +document.getElementById('p-qty').value || 0,
+    min: +document.getElementById('p-min').value || 5,
+  };
+  DB.products.push(p);
+  saveData(DB);
+  closeModal('add-product');
+  ['p-name','p-cat','p-price','p-qty','p-min'].forEach(id => document.getElementById(id).value = '');
+  renderProducts();
+  updateSidebarStats();
+  toast('✅ Mahsulot qo\'shildi');
+}
+
+function deleteProduct(id) {
+  if (!confirm('Mahsulotni o\'chirasizmi?')) return;
+  DB.products = DB.products.filter(p => p.id !== id);
+  DB.incomes = DB.incomes.filter(i => i.pid !== id);
+  DB.outcomes = DB.outcomes.filter(o => o.pid !== id);
+  delete DB.barcodes[id];
+  saveData(DB);
+  renderProducts();
+  updateSidebarStats();
+  toast('🗑️ O\'chirildi');
+}
+
+function renderProducts() {
+  const tbody = document.getElementById('products-tbody');
+  if (!DB.products.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:#94a3b8">Mahsulot yo\'q. "+ Mahsulot qo\'shish" tugmasini bosing.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = DB.products.map((p, i) => {
+    const status = p.qty <= 0 ? '<span class="badge red">Tugagan</span>' :
+                   p.qty <= p.min ? '<span class="badge yellow">Kam</span>' :
+                   '<span class="badge green">Yetarli</span>';
+    return `<tr>
+      <td>${i+1}</td>
+      <td><strong>${p.name}</strong></td>
+      <td>${p.cat}</td>
+      <td>${fmtNum(p.price)} so'm</td>
+      <td><strong>${p.qty}</strong></td>
+      <td>${p.min}</td>
+      <td>${status}</td>
+      <td><button class="btn btn-gray" style="padding:5px 12px;font-size:12px" onclick="deleteProduct(${p.id})">O'chirish</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ==================== INCOME ====================
+function addIncome() {
+  const pid = +document.getElementById('i-product').value;
+  const qty = +document.getElementById('i-qty').value;
+  if (!pid || qty < 1) return toast('❌ Ma\'lumot to\'liq emas!');
+  const p = DB.products.find(x => x.id === pid);
+  if (!p) return;
+  p.qty += qty;
+  DB.incomes.push({ id: Date.now(), pid, name: p.name, qty, price: +document.getElementById('i-price').value||0, date: document.getElementById('i-date').value||today(), note: document.getElementById('i-note').value.trim() });
+  saveData(DB);
+  closeModal('add-income');
+  renderIncome();
+  updateSidebarStats();
+  toast('✅ Kirim qo\'shildi');
+}
+
+function renderIncome() {
+  const tbody = document.getElementById('income-tbody');
+  if (!DB.incomes.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:#94a3b8">Kirim yo\'q</td></tr>'; return; }
+  tbody.innerHTML = [...DB.incomes].reverse().map(i =>
+    `<tr><td><strong>${i.name}</strong></td><td>${i.qty} dona</td><td>${fmtNum(i.price)} so'm</td><td>${i.date}</td><td>${i.note||'—'}</td></tr>`
+  ).join('');
+}
+
+// ==================== OUTCOME ====================
+function addOutcome() {
+  const pid = +document.getElementById('o-product').value;
+  const qty = +document.getElementById('o-qty').value;
+  if (!pid || qty < 1) return toast('❌ Ma\'lumot to\'liq emas!');
+  const p = DB.products.find(x => x.id === pid);
+  if (!p) return;
+  if (p.qty < qty) return toast('❌ Omborda yetarli mahsulot yo\'q!');
+  p.qty -= qty;
+  DB.outcomes.push({ id: Date.now(), pid, name: p.name, qty, reason: document.getElementById('o-reason').value.trim()||'Noma\'lum', date: document.getElementById('o-date').value||today() });
+  saveData(DB);
+  closeModal('add-outcome');
+  renderOutcome();
+  updateSidebarStats();
+  toast('✅ Chiqim qo\'shildi');
+}
+
+function renderOutcome() {
+  const tbody = document.getElementById('outcome-tbody');
+  if (!DB.outcomes.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:#94a3b8">Chiqim yo\'q</td></tr>'; return; }
+  tbody.innerHTML = [...DB.outcomes].reverse().map(o =>
+    `<tr><td><strong>${o.name}</strong></td><td>${o.qty} dona</td><td>${o.reason}</td><td>${o.date}</td></tr>`
+  ).join('');
+}
+
+// ==================== BARCODE ====================
+// Unique barcode generator: prefix + product short code + counter
+function makeBarcodeValue(product, index) {
+  // EAN-13 style: 12 digits + check digit
+  // Format: 2 (prefix) + 5 (product id last 5) + 5 (counter padded) = 12 digits + check
+  const pid = String(product.id).slice(-5).padStart(5,'0');
+  const cnt = String(index).padStart(5,'0');
+  const base12 = '2' + pid + cnt; // 11 digits
+  // EAN-13 check digit
+  let sum = 0;
+  for (let i = 0; i < 12; i++) {
+    const d = parseInt(base12.padStart(12,'0')[i]);
+    sum += i % 2 === 0 ? d : d * 3;
+  }
+  const check = (10 - (sum % 10)) % 10;
+  return base12.padStart(12,'0') + check;
+}
+
+function renderBarcodeSetup() {
+  const sel = document.getElementById('bc-product');
+  sel.innerHTML = '<option value="">— Mahsulot tanlang —</option>' +
+    DB.products.map(p => `<option value="${p.id}">${p.name} (${p.qty} dona)</option>`).join('');
+}
+
+function generateBarcodes() {
+  const pid = +document.getElementById('bc-product').value;
+  const count = +document.getElementById('bc-count').value || 1;
+  if (!pid) return toast('❌ Mahsulot tanlang!');
+  if (count < 1 || count > 500) return toast('❌ 1 dan 500 gacha kiriting!');
+  const product = DB.products.find(p => p.id === pid);
+  if (!product) return;
+
+  // Get or init counter for this product
+  if (!DB.barcodes[pid]) DB.barcodes[pid] = { lastIdx: 0 };
+  const startIdx = DB.barcodes[pid].lastIdx + 1;
+  DB.barcodes[pid].lastIdx = startIdx + count - 1;
+  saveData(DB);
+
+  const grid = document.getElementById('barcode-grid');
+  grid.innerHTML = '';
+
+  for (let i = startIdx; i < startIdx + count; i++) {
+    const val = makeBarcodeValue(product, i);
+    const card = document.createElement('div');
+    card.className = 'barcode-card';
+    card.innerHTML = `
+      <div class="bc-name">${product.name}</div>
+      <svg id="sv-${i}"></svg>
+      <div class="bc-num">№ ${i} | ${val}</div>
+    `;
+    grid.appendChild(card);
+  }
+
+  // Render barcodes
+  for (let i = startIdx; i < startIdx + count; i++) {
+    const val = makeBarcodeValue(product, i);
+    try {
+      JsBarcode(`#sv-${i}`, val, {
+        format: 'EAN13',
+        width: 1.5,
+        height: 55,
+        displayValue: true,
+        fontSize: 10,
+        margin: 4,
+        background: '#ffffff',
+        lineColor: '#000000'
+      });
+    } catch(e) {
+      // fallback CODE128
+      JsBarcode(`#sv-${i}`, val, {
+        format: 'CODE128', width: 1.5, height: 55, displayValue: true, fontSize: 10
+      });
+    }
+  }
+
+  document.getElementById('print-btn-row').style.display = 'block';
+  document.getElementById('bc-info').textContent = `${product.name} — ${count} ta barkod (№${startIdx}–${startIdx+count-1})`;
+  toast(`✅ ${count} ta barkod yaratildi`);
+}
+
+// ==================== SCAN / SANOQ ====================
+let scanSession = {}; // { barcodeVal: { product, count } }
+
+function renderScanPage() {
+  renderScanList();
+  document.getElementById('scan-input').focus();
+}
+
+function scanBarcode() {
+  const input = document.getElementById('scan-input');
+  const val = input.value.trim();
+  if (!val) return;
+  input.value = '';
+  input.focus();
+
+  // Find product by barcode
+  const product = findProductByBarcode(val);
+  const resultEl = document.getElementById('scan-result');
+
+  if (!product) {
+    resultEl.className = 'scan-result show error';
+    resultEl.innerHTML = `<strong>❌ Topilmadi:</strong> <code>${val}</code> — bu barkod hech qaysi mahsulotga tegishli emas.`;
+    setTimeout(() => resultEl.classList.remove('show'), 3000);
+    return;
+  }
+
+  // Add to session
+  if (!scanSession[val]) {
+    scanSession[val] = { product, code: val, count: 0 };
+  }
+  scanSession[val].count++;
+
+  resultEl.className = 'scan-result show';
+  resultEl.innerHTML = `<strong>✅ ${product.name}</strong> — skanerlandi. Jami: <strong>${scanSession[val].count}</strong> dona`;
+  setTimeout(() => resultEl.classList.remove('show'), 2000);
+
+  renderScanList();
+}
+
+function findProductByBarcode(val) {
+  // val format: 2 + pid(5) + counter(5) + check = 13 digits
+  if (val.length === 13) {
+    const pidStr = val.slice(1, 6);
+    const pid = parseInt(pidStr);
+    // Find product whose id ends with these 5 digits
+    return DB.products.find(p => String(p.id).slice(-5).padStart(5,'0') === pidStr) || null;
+  }
+  return null;
+}
+
+function renderScanList() {
+  const body = document.getElementById('scan-list-body');
+  const confirmBtn = document.getElementById('confirm-btn');
+  const entries = Object.values(scanSession);
+
+  if (!entries.length) {
+    body.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px">Hali hech narsa skanerlanmagan</p>';
+    confirmBtn.style.display = 'none';
+    document.getElementById('scan-summary').style.display = 'none';
+    return;
+  }
+
+  confirmBtn.style.display = 'inline-block';
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
+      ${entries.map(e => {
+        const diff = e.count - e.product.qty;
+        const diffStr = diff === 0 ? '<span class="badge green">Mos ✓</span>' :
+                        diff > 0 ? `<span class="badge red">+${diff} ortiq</span>` :
+                        `<span class="badge yellow">${diff} kam</span>`;
+        return `<div style="background:#f8fafc;border-radius:12px;padding:14px;border:1.5px solid #e2e8f0">
+          <div style="font-weight:700;margin-bottom:6px">${e.product.name}</div>
+          <div style="font-size:13px;color:#64748b;display:flex;justify-content:space-between">
+            <span>Skanerlangan: <strong>${e.count}</strong></span>
+            <span>Ombordagi: <strong>${e.product.qty}</strong></span>
+          </div>
+          <div style="margin-top:8px">${diffStr}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+
+  // Summary
+  const totalScanned = entries.reduce((s, e) => s + e.count, 0);
+  const mismatches = entries.filter(e => e.count !== e.product.qty).length;
+  const summary = document.getElementById('scan-summary');
+  summary.style.display = 'block';
+  summary.innerHTML = `
+    <div style="display:flex;gap:20px;flex-wrap:wrap">
+      <div class="card" style="flex:1;min-width:120px"><div class="val">${entries.length}</div><div class="lbl">Mahsulot turi</div></div>
+      <div class="card green" style="flex:1;min-width:120px"><div class="val">${totalScanned}</div><div class="lbl">Jami skanerlangan</div></div>
+      <div class="card ${mismatches>0?'red':'green'}" style="flex:1;min-width:120px"><div class="val">${mismatches}</div><div class="lbl">Nomuvofiq</div></div>
+    </div>
+  `;
+}
+
+function confirmCount() {
+  const entries = Object.values(scanSession);
+  if (!entries.length) return;
+  if (!confirm(`${entries.length} ta mahsulot sanoqini tasdiqlaysizmi? Ombordagi miqdor skanerlangan miqdorga yangilanadi.`)) return;
+
+  entries.forEach(e => {
+    const p = DB.products.find(x => x.id === e.product.id);
+    if (p) {
+      const diff = e.count - p.qty;
+      if (diff !== 0) {
+        if (diff > 0) {
+          DB.incomes.push({ id: Date.now(), pid: p.id, name: p.name, qty: diff, price: 0, date: today(), note: 'Sanoq tuzatish' });
+        } else {
+          DB.outcomes.push({ id: Date.now(), pid: p.id, name: p.name, qty: Math.abs(diff), reason: 'Sanoq tuzatish', date: today() });
+        }
+        p.qty = e.count;
+      }
+    }
+  });
+
+  saveData(DB);
+  scanSession = {};
+  renderScanList();
+  updateSidebarStats();
+  toast('✅ Sanoq tasdiqlandi, ombor yangilandi!', 3000);
+}
+
+function clearScan() {
+  document.getElementById('scan-input').value = '';
+  document.getElementById('scan-result').classList.remove('show');
+  document.getElementById('scan-input').focus();
+}
+
+function clearAllScans() {
+  if (!Object.keys(scanSession).length) return;
+  if (!confirm('Barcha skanerlangan ma\'lumotlar o\'chirilsinmi?')) return;
+  scanSession = {};
+  renderScanList();
+}
+
+// ==================== DASHBOARD ====================
+function renderDashboard() {
+  const totalProducts = DB.products.length;
+  const totalQty = DB.products.reduce((s, p) => s + p.qty, 0);
+  const totalValue = DB.products.reduce((s, p) => s + p.qty * p.price, 0);
+  const lowStock = DB.products.filter(p => p.qty <= p.min && p.qty > 0);
+  const outOfStock = DB.products.filter(p => p.qty === 0);
+
+  document.getElementById('dash-cards').innerHTML = `
+    <div class="card"><div class="val">${totalProducts}</div><div class="lbl">Mahsulot turi</div></div>
+    <div class="card green"><div class="val">${totalQty}</div><div class="lbl">Jami dona</div></div>
+    <div class="card purple"><div class="val">${fmtNum(totalValue)}</div><div class="lbl">Ombor qiymati (so'm)</div></div>
+    <div class="card orange"><div class="val">${lowStock.length}</div><div class="lbl">Kam qoldiq</div></div>
+    <div class="card red"><div class="val">${outOfStock.length}</div><div class="lbl">Tugagan</div></div>
+  `;
+
+  const ls = document.getElementById('low-stock-list');
+  ls.innerHTML = lowStock.length ? lowStock.map(p =>
+    `<div class="scan-item"><span>${p.name}</span><span class="badge yellow">${p.qty} / min ${p.min}</span></div>`
+  ).join('') : '<p style="color:#94a3b8;padding:10px 0">Barcha mahsulot yetarli 👍</p>';
+
+  const ri = document.getElementById('recent-incomes');
+  const last5 = [...DB.incomes].reverse().slice(0, 5);
+  ri.innerHTML = last5.length ? last5.map(i =>
+    `<div class="scan-item"><span>${i.name}</span><span class="badge blue">+${i.qty} | ${i.date}</span></div>`
+  ).join('') : '<p style="color:#94a3b8;padding:10px 0">Kirim yo\'q</p>';
+}
+
+// ==================== REPORT ====================
+function renderReport() {
+  const totalIn = DB.incomes.reduce((s, i) => s + i.qty, 0);
+  const totalOut = DB.outcomes.reduce((s, o) => s + o.qty, 0);
+  const totalVal = DB.products.reduce((s, p) => s + p.qty * p.price, 0);
+
+  document.getElementById('report-cards').innerHTML = `
+    <div class="card green"><div class="val">${totalIn}</div><div class="lbl">Jami kirim (dona)</div></div>
+    <div class="card red"><div class="val">${totalOut}</div><div class="lbl">Jami chiqim (dona)</div></div>
+    <div class="card purple"><div class="val">${fmtNum(totalVal)}</div><div class="lbl">Ombor qiymati</div></div>
+    <div class="card"><div class="val">${DB.products.length}</div><div class="lbl">Mahsulot turi</div></div>
+  `;
+
+  const tbody = document.getElementById('report-tbody');
+  tbody.innerHTML = DB.products.map(p => {
+    const inQty = DB.incomes.filter(i => i.pid === p.id).reduce((s, i) => s + i.qty, 0);
+    const outQty = DB.outcomes.filter(o => o.pid === p.id).reduce((s, o) => s + o.qty, 0);
+    return `<tr>
+      <td><strong>${p.name}</strong></td>
+      <td>${p.qty} dona</td>
+      <td style="color:#16a34a">+${inQty}</td>
+      <td style="color:#dc2626">-${outQty}</td>
+      <td>${fmtNum(p.qty * p.price)} so'm</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;padding:20px;color:#94a3b8">Ma\'lumot yo\'q</td></tr>';
+}
+
+// ==================== SIDEBAR STATS ====================
+function updateSidebarStats() {
+  const total = DB.products.reduce((s, p) => s + p.qty, 0);
+  const low = DB.products.filter(p => p.qty <= p.min).length;
+  document.getElementById('sidebar-stats').innerHTML =
+    `Jami dona: <strong>${total}</strong><br>Kam qoldiq: <strong>${low}</strong><br>Mahsulotlar: <strong>${DB.products.length}</strong>`;
+}
+
+// ==================== INIT ====================
+buildNav();
+gotoPage('dashboard');
 </script>
 </body>
 </html>
